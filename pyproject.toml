@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "gve-devnet-ndfc-upgrade-scheduler"
+version = "0.1.0"
+description = "Script to automatically schedule NX-OS upgrades via Nexus Dashboard Fabric Controller (NDFC)."
+authors = ["Matt Schmitz <mattsc@cisco.com>"]
+license = "CISCO SAMPLE CODE LICENSE"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+rich = "^13.7.0"
+APScheduler = "^3.10.4"
+python-dotenv = "^1.0.0"
+pyyaml = "^6.0.1"
+schema = "^0.7.5"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

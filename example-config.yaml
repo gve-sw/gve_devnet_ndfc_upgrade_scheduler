@@ -1,0 +1,16 @@
+schedule:
+  year: 2024
+  month: 01
+  day: 01
+  hour: 03
+  minute: 30
+  timezone: America/New_York
+
+upgrade:
+  policy: "nx-os10_4_1"
+  stage-image: True
+  timeout: 3600
+
+devices:
+  - AAAAAAAAAAA
+  - BBBBBBBBBBB
