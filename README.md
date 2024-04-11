@@ -19,7 +19,7 @@ This code performs the following process:
 - Cisco Nexus Dashboard Fabric Controller (NDFC)
 - Cisco NX-OS Switching
 
-> Note: Requires minimum NDFC version 12.1.3b & may not be compatible with future releases
+> Note: This sample code is only compatible with NDFC versions 12.1.2e and 12.1.3b
 
 ## Installation/Configuration
 
@@ -97,7 +97,9 @@ In order to authenticate to NDFC, we must provide **either** a API key **or** a 
 
 ### Running locally
 
-Run the application with the following command:
+There are two versions of the script provided depending on NDFC versions. Ensure that you are running the correct version for your NDFC environment.
+
+With the `config.yaml` and `.env` files in the same directory, run the application with the following command:
 
 ```
 python3 ndfc_upgrade_scheduler.py

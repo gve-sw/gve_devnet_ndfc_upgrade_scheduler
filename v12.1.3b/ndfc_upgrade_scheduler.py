@@ -145,6 +145,24 @@ class NDFC:
             "X-Nd-Username": NDFC_USER,
         }
 
+    def getNDFCVersion(self):
+        """
+        Validate current version of NDFC
+        """
+        url = f"{NDFC_PATH}/fm/about/version"
+        response = self.session.get(url, headers=self.REQUEST_HEADERS, verify=False)
+        if response.status_code != 200:
+            log.error("[red]Error retrieving NDFC version:")
+            log.error(f"[red]{response.text}")
+            log.error("[red]Script will continue, but may not work as expected")
+            return
+        self.ndfc_version = response.json()["version"]
+        log.info(f"NDFC Version: {self.ndfc_version}")
+        if self.ndfc_version != "12.1.3b":
+            log.error("[red]NDFC version must be 12.1.3b")
+            log.error("[red]Script cannot continue. Exiting...")
+            sys.exit(1)
+
     def getDeviceInfo(self, silent=False):
         """
         Query NDFC for device info that will be needed for later API calls
@@ -154,19 +172,43 @@ class NDFC:
 
         url = f"{NDFC_PATH}/imagemanagement/rest/packagemgnt/issu"
 
-        response = self.session.get(url, headers=self.REQUEST_HEADERS, verify=False)
+        # Results are paged based on request / response headers
+        page_start = 0
+        page_size = 200
+        self.device_info = []
+        while True:
+            # Iterate until all devices are found, 100 at a time
+            page_end = page_start + (page_size - 1)
+            log.debug(f"Requesting devices {page_start} - {page_end}")
+            self.REQUEST_HEADERS["Range"] = f"items={page_start}-{page_end}"
+            response = self.session.get(url, headers=self.REQUEST_HEADERS, verify=False)
 
-        if response.status_code != 200:
-            log.error("[red]Error retrieving device list:")
-            log.error(f"[red]{response.text}")
+            if response.status_code != 200:
+                log.error("[red]Error retrieving device list:")
+                log.error(f"[red]{response.text}")
+                log.error("[red]Script cannot continue. Exiting...")
+                sys.exit(1)
+
+            # Store device information for later use
+            for device in response.json()["lastOperDataObject"]:
+                if device["serialNumber"] in self.target_devices:
+                    self.device_info.append(device)
+
+            # Increment page start for next iteration
+            total_devices = int(response.headers.get("Content-Range").split("/")[1]) - 1
+            log.debug(f"Total devices: {total_devices + 1}")
+            if total_devices > page_end:
+                log.debug("More devices to retrieve...")
+                page_start += page_size
+            # Break loop if we have all devices
+            if total_devices <= page_end:
+                log.debug("All devices found")
+                break
+
+        if len(self.device_info) == 0:
+            log.error("[red]No devices found in NDFC matching provided serial numbers")
             log.error("[red]Script cannot continue. Exiting...")
             sys.exit(1)
-
-        # Store device information for later use
-        self.device_info = []
-        for device in response.json()["lastOperDataObject"]:
-            if device["serialNumber"] in self.target_devices:
-                self.device_info.append(device)
         if not silent:
             log.info("[green]Device information retrieved successfully!")
             log.debug(f"Collected device info: {self.device_info}")
@@ -360,6 +402,9 @@ def startUpgrade() -> None:
     if AUTH_MODE == "USERPASS":
         ndfc.getAuthToken()
 
+    # Validate NDFC Version
+    ndfc.getNDFCVersion()
+
     # Get device IP / Serial mappings
     ndfc.getDeviceInfo()
 
@@ -385,6 +430,9 @@ def startUpgrade() -> None:
             ndfc.checkReadyForUpgrade()
             if ndfc.ready_for_upgrade:
                 break
+    else:
+        # If stage-image is False, assume devices are already staged / validated
+        ndfc.ready_for_upgrade = True
 
     # Check if we hit timeout waiting for devices to be ready
     if not ndfc.ready_for_upgrade:
@@ -447,7 +495,7 @@ def startScheduler() -> None:
     global config
     log.info("Starting scheduler...")
 
-    # Init background scheduelr
+    # Init background scheduler
     bg = BackgroundScheduler()
     bg.start()
 
@@ -466,7 +514,13 @@ def startScheduler() -> None:
     )
 
     # Add upgrade job to scheduler
-    bg.add_job(func=startUpgrade, trigger=upgrade_job, name="Run Upgrade")
+    bg.add_job(
+        func=startUpgrade,
+        trigger=upgrade_job,
+        name="Run Upgrade",
+        # Uncomment below to force job to run immediately if scheduled time has passed
+        # misfire_grace_time=None,
+    )
     log.info("[green]Scheduler started & tasks loaded!")
 
     # Check jobs queue
