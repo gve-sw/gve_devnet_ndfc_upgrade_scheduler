@@ -185,6 +185,8 @@ class NDFC:
             self.REQUEST_HEADERS["Range"] = f"items={page_start}-{page_end}"
             response = self.session.get(url, headers=self.REQUEST_HEADERS, verify=False)
 
+            log.debug(f"NDFC Response: {response.json()}")
+
             if response.status_code != 200:
                 log.error("[red]Error retrieving device list:")
                 log.error(f"[red]{response.text}")
@@ -609,7 +611,7 @@ def startScheduler() -> None:
         trigger=upgrade_job,
         name="Run Upgrade",
         # Uncomment below to force job to run immediately if scheduled time has passed
-        misfire_grace_time=None,
+        # misfire_grace_time=None,
     )
     log.info("[green]Scheduler started & tasks loaded!")
 
